@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: masfd-rl-deployment
+spec:
+  replicas: 3 # 默认初始副本数
+  selector:
+    matchLabels:
+      app: masfd-rl-app
+  template:
+    metadata:
+      labels:
+        app: masfd-rl-app
+    spec:
+      containers:
+      - name: masfd-rl-container
+        image: masfd-rl-simulator
+        resources:
+          limits:
+            cpu: "32" # 假设每个Pod最多可以使用32个CPU核心
+          requests:
+            cpu: "16"
+        volumeMounts:
+        - name: host-volume
+          mountPath: /path/to/mount/in/container # 替换为您容器内需要挂载的路径
+      volumes:
+      - name: host-volume
+        hostPath:
+          path: /path/to/host/directory # 替换为宿主机上的目录路径
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: masfd-rl-hpa-cpu
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: masfd-rl-deployment
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: masfd-rl-service
+spec:
+  selector:
+    app: masfd-rl-app
+  ports:
+    - protocol: TCP
+      port: 80 # 服务暴露的端口
+      targetPort: 8080 # 容器内的端口
+  type: ClusterIP # 内部服务
